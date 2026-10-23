@@ -8,7 +8,7 @@ addEventListener("scroll",sc,{passive:true});sc();
 mb.addEventListener("click",function(){var o=nav.classList.toggle("open");mb.setAttribute("aria-expanded",o);mb.setAttribute("aria-label",o?"Close menu":"Open menu")});
 nav.querySelectorAll("a").forEach(function(a){a.addEventListener("click",function(){nav.classList.remove("open");mb.setAttribute("aria-expanded","false")})});
 addEventListener("keydown",function(e){if(e.key==="Escape"&&nav.classList.contains("open")){nav.classList.remove("open");mb.setAttribute("aria-expanded","false");mb.focus()}});
-var links=[].slice.call(nav.querySelectorAll("a")),map={hotel:"about"};
+var links=[].slice.call(nav.querySelectorAll("a")),map={};
 if("IntersectionObserver" in window){
 var so=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){var id=map[e.target.id]||e.target.id;links.forEach(function(l){l.classList.toggle("on",l.getAttribute("href")==="#"+id)})}})},{rootMargin:"-45% 0px -50% 0px"});
 document.querySelectorAll("section[id]").forEach(function(s){so.observe(s)});
@@ -63,8 +63,27 @@ if(mql.addEventListener)mql.addEventListener("change",function(){if(mode==="auto
 
 (function(){var fs=[].slice.call(document.querySelectorAll(".pfl button")),it=[].slice.call(document.querySelectorAll(".pi")),lb=document.getElementById("lb");if(!lb)return;
 fs.forEach(function(b){b.addEventListener("click",function(){var f=b.getAttribute("data-f");fs.forEach(function(x){x.setAttribute("aria-pressed",x===b?"true":"false")});it.forEach(function(p){p.hidden=!(f==="all"||p.getAttribute("data-c")===f);if(!p.hidden){p.style.animation="none";void p.offsetWidth;p.style.animation=""}})})});
-document.querySelectorAll(".pb").forEach(function(b){b.addEventListener("click",function(){var im=b.querySelector("img");document.getElementById("lbi").src=im.src;document.getElementById("lbi").alt=im.alt;document.getElementById("lbc").textContent=im.alt;lb.showModal?lb.showModal():lb.setAttribute("open","")})});
-function cl(){lb.close?lb.close():lb.removeAttribute("open")}
+/* slideshow: follows the active filter, arrows / keys / swipe / thumbnails / autoplay */
+var lbi=document.getElementById("lbi"),lbc=document.getElementById("lbc"),lbn=document.getElementById("lbn"),th=document.getElementById("lbth"),pl=document.getElementById("lbp"),stg=document.getElementById("lbs"),L=[],cur=0,tm=null;
+function vis(){return it.filter(function(p){return !p.hidden&&!p.classList.contains("vi")}).map(function(p){return p.querySelector("img")})}
+function show(i,dir){var n=L.length;if(!n)return;cur=(i+n)%n;var im=L[cur];lbi.src=im.src;lbi.alt=im.alt;lbc.textContent=im.alt;lbn.textContent=(cur+1)+" / "+n;
+if(dir){lbi.style.setProperty("--dx",(dir*48)+"px");lbi.classList.remove("an");void lbi.offsetWidth;lbi.classList.add("an")}
+[].forEach.call(th.children,function(b,k){var on=k===cur;b.setAttribute("aria-current",on?"true":"false");if(on)th.scrollLeft=b.offsetLeft-th.clientWidth/2+b.offsetWidth/2});
+if(n>1)[L[(cur+1)%n],L[(cur-1+n)%n]].forEach(function(x){(new Image).src=x.src})}
+function build(){th.innerHTML="";L.forEach(function(im,k){var b=document.createElement("button");b.type="button";b.setAttribute("aria-label","Show image "+(k+1)+": "+im.alt);b.innerHTML='<img alt="" loading="lazy" src="'+im.src+'">';b.addEventListener("click",function(){if(k!==cur)show(k,k>cur?1:-1);rs()});th.appendChild(b)});lb.classList.toggle("one",L.length<2)}
+function stop(){clearInterval(tm);tm=null;pl.setAttribute("aria-pressed","false");pl.textContent="Play ▶"}
+function play(){clearInterval(tm);tm=setInterval(function(){show(cur+1,1)},3500);pl.setAttribute("aria-pressed","true");pl.textContent="Pause ❚❚"}
+function rs(){if(tm)play()}
+function go(d){show(cur+d,d);rs()}
+pl.addEventListener("click",function(){tm?stop():play()});
+document.getElementById("lbl").addEventListener("click",function(){go(-1)});
+document.getElementById("lbrt").addEventListener("click",function(){go(1)});
+lb.addEventListener("keydown",function(e){if(e.key==="ArrowLeft"){e.preventDefault();go(-1)}else if(e.key==="ArrowRight"){e.preventDefault();go(1)}});
+var sx=null;stg.addEventListener("touchstart",function(e){sx=e.touches[0].clientX},{passive:true});
+stg.addEventListener("touchend",function(e){if(sx===null)return;var dx=e.changedTouches[0].clientX-sx;sx=null;if(Math.abs(dx)>40)go(dx<0?1:-1)},{passive:true});
+document.querySelectorAll(".pb").forEach(function(b){b.addEventListener("click",function(){L=vis();build();cur=0;show(Math.max(0,L.indexOf(b.querySelector("img"))),0);lb.showModal?lb.showModal():lb.setAttribute("open","")})});
+function cl(){stop();lb.close?lb.close():lb.removeAttribute("open")}
+lb.addEventListener("close",stop);
 document.getElementById("lbx").addEventListener("click",cl);lb.addEventListener("click",function(e){if(e.target===lb)cl()});
 document.querySelectorAll(".pi video").forEach(function(v){v.addEventListener("play",function(){document.querySelectorAll(".pi video").forEach(function(o){if(o!==v)o.pause()})})});
 })();
@@ -92,4 +111,18 @@ var an=top.animate([{clipPath:sh[0]},{clipPath:sh[1]}],{duration:1200,easing:"cu
 an.onfinish=function(){base.src=t.list[nx];t.i=nx;(base.decode?base.decode():Promise.resolve()).catch(function(){}).then(function(){an.cancel()})};
 },3800)},n*950+1200);
 });
+})();
+
+/* hotel-offer pop-up: shows ~3s after arrival, at most once a day per visitor; add ?offer to the URL to force it */
+(function(){var d=document.getElementById("promo");if(!d||!d.showModal)return;
+var K="nif-promo-seen",DAY=864e5,force=/[?&]offer\b/.test(location.search),last=0;
+try{last=+localStorage.getItem(K)||0}catch(e){}
+if(!force&&Date.now()-last<DAY)return;
+function open(){if(d.open)return;if(document.querySelector("dialog[open]")||document.getElementById("nav").classList.contains("open")){setTimeout(open,4000);return}
+d.showModal();try{localStorage.setItem(K,String(Date.now()))}catch(e){}}
+setTimeout(open,3000);
+function cl(){d.close()}
+document.getElementById("promoX").addEventListener("click",cl);
+d.addEventListener("click",function(e){if(e.target===d)cl()});
+d.querySelectorAll("[data-close]").forEach(function(a){a.addEventListener("click",cl)});
 })();
